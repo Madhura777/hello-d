@@ -32,7 +32,7 @@ pipeline {
             docker rm -f ${CONTAINER_NAME} || true
           fi
           echo "Starting new container..."
-          docker run -d -p ${APP_PORT}:${APP_PORT} --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
+          docker run -d -p ${APP_PORT}:5000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
         '''
       }
     }
@@ -41,7 +41,7 @@ pipeline {
       steps {
         echo '🔍 Verifying app is running...'
         sh '''
-          echo "Waiting for app..."
+          echo "Waiting for app to start..."
           for i in {1..10}; do
             if curl -s http://localhost:${APP_PORT} | grep -q "Hello"; then
               echo "✅ App is up and responding!"
