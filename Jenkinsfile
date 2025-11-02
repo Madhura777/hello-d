@@ -5,7 +5,7 @@ pipeline {
     IMAGE_NAME = "hello-d"
     IMAGE_TAG  = "latest"
     CONTAINER_NAME = "hello-d"
-    APP_PORT = "5001"
+    APP_PORT = "5001"   // Flask app runs inside container on port 5001
   }
 
   stages {
@@ -32,7 +32,7 @@ pipeline {
             docker rm -f ${CONTAINER_NAME} || true
           fi
           echo "Starting new container..."
-          docker run -d -p ${APP_PORT}:5000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
+          docker run -d -p 5001:${APP_PORT} --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
         '''
       }
     }
@@ -42,15 +42,27 @@ pipeline {
         echo '🔍 Verifying app is running...'
         sh '''
           echo "Waiting for app to start..."
-          for i in {1..10}; do
-            if curl -s http://localhost:${APP_PORT} | grep -q "Hello"; then
-              echo "✅ App is up and responding!"
+          sleep 5
+
+          # Get the container's internal IP
+          CONTAINER_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONTAINER_NAME})
+          echo "Container IP: $CONTAINER_IP"
+
+          echo "Testing container response..."
+          if curl -s http://$CONTAINER_IP:${APP_PORT} | grep -q "Hello"; then
+            echo "✅ App is up and responding!"
+            exit 0
+          else
+            echo "❌ App failed to respond on internal IP."
+            echo "Retrying via localhost..."
+            if curl -s http://localhost:5001 | grep -q "Hello"; then
+              echo "✅ App is accessible via localhost!"
               exit 0
+            else
+              echo "❌ App is not accessible on any interface."
+              exit 1
             fi
-            sleep 2
-          done
-          echo "❌ App failed to respond"
-          exit 1
+          fi
         '''
       }
     }
